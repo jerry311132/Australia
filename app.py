@@ -113,15 +113,19 @@ custom_style = """
         background-size: cover;
     }
     
-    p, li, span { line-height: 1.9 !important; font-size: 1.05rem !important; color: #1a202c !important; }
+    /* 終極白字修復：強迫所有一般文字、清單、提示框都是深色 */
+    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span { color: #1a202c !important; line-height: 1.9 !important; font-size: 1.05rem !important; }
+    div[data-testid="stAlert"] div, div[data-testid="stAlert"] span { color: #1a202c !important; }
+    div[data-testid="stCheckbox"] span { color: #1a202c !important; }
     
+    /* 大標題卡片設計 (確保裡面的文字維持白色) */
     .hero-card {
         background: #1a365d; padding: 30px 20px; border-radius: 12px;
         text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 25px;
     }
-    .hero-card * { color: #ffffff !important; }
-    .hero-title { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 8px !important; }
-    .hero-subtitle { color: #90cdf4 !important; font-size: 1.05rem !important; font-weight: 500 !important; }
+    .hero-card, .hero-card div, .hero-card span, .hero-card p { color: #ffffff !important; }
+    .hero-title { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 12px !important; }
+    .hero-subtitle { color: #90cdf4 !important; font-size: 1.15rem !important; font-weight: 600 !important; letter-spacing: 0.5px; }
     
     /* === 訂製橫向儀表板專用 CSS === */
     .custom-dashboard {
@@ -171,13 +175,14 @@ custom_style = """
         font-weight: 800;
         line-height: 1.2;
     }
+    /* 放大天氣字體與按鈕 */
     .weather-badge {
         background: #f1f3eb;
-        padding: 8px 14px;
+        padding: 8px 18px;
         border-radius: 14px;
-        font-size: 1.2rem;
-        font-weight: 700;
-        color: #5a7d59;
+        font-size: 1.5rem !important; /* 溫度放大 */
+        font-weight: 800;
+        color: #5a7d59 !important;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -189,7 +194,6 @@ custom_style = """
         border: 1px solid rgba(0, 0, 0, 0.1) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
         margin-bottom: 12px !important;
     }
-    div[data-testid="stExpander"] * { color: #1a202c !important; }
     div[data-testid="stExpander"] a { color: #2b6cb0 !important; text-decoration: underline !important; font-weight: 700 !important; }
     
     .trip-day-header {
@@ -225,19 +229,24 @@ with st.sidebar:
         st.session_state.cloud_data = load_cloud_data()
         st.toast("✅ 已成功從資料庫即時抓取最新進度！")
 
-# 7. 中央主畫面大標題
-st.markdown("""
+# 7. 日期與倒數計算
+today = datetime.now()
+target_date = datetime(2026, 7, 31)
+days_left = max(0, (target_date - today).days)
+
+# 轉換中文星期
+weekdays = ["一", "二", "三", "四", "五", "六", "日"]
+today_str = f"{today.month}月{today.day}日({weekdays[today.weekday()]})"
+
+# 8. 中央主畫面大標題 (整合日期與倒數)
+st.markdown(f"""
 <div class="hero-card">
     <div class="hero-title">🐨 2026 澳洲自駕隨身手冊</div>
-    <div class="hero-subtitle">專案代號：Antigravity 全自動無感閃聯版</div>
+    <div class="hero-subtitle">{today_str} ｜ ✈️ 倒數 {days_left} 天</div>
 </div>
 """, unsafe_allow_html=True)
 
-# 8. 頂部儀表板：自訂 HTML 橫向卡片
-today = datetime.now()
-target_date = datetime(2026, 7, 31)
-days_left = (target_date - today).days
-
+# 9. 頂部儀表板：自訂 HTML 橫向卡片
 lat, lon = city_db[selected_city]
 weather_desc = get_exact_weather(lat, lon)
 display_city_name = selected_city.split(" ")[1] 
@@ -248,7 +257,7 @@ dashboard_html = f"""
 <div class="dash-card">
 <div class="dash-text">
 <span class="dash-label">出發倒數</span>
-<span class="dash-value">{max(0, days_left)} 天</span>
+<span class="dash-value">{days_left} 天</span>
 </div>
 </div>
 <div class="dash-card" style="flex: 1.5;">
@@ -265,7 +274,7 @@ dashboard_html = f"""
 """
 st.markdown(dashboard_html, unsafe_allow_html=True)
 
-# 9. 核心頁籤
+# 10. 核心頁籤
 tab1, tab2, tab3 = st.tabs(["📅 12天完整行程", "🏨 住宿與租車", "🎒 行李清單與安全"])
 
 with tab1:
