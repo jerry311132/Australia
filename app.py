@@ -73,13 +73,13 @@ def save_cloud_data(user_name, user_answers):
     except Exception as e:
         return False
 
-# 4. 精準天氣抓取核心 (直接吃指定座標，100%不失準)
+# 4. 精準天氣抓取核心 (匹配截圖樣式：溫度在前，Emoji 在後)
 @st.cache_data(ttl=1800)
 def get_exact_weather(lat, lon):
     try:
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
         w_data = requests.get(weather_url, timeout=5).json()
-        temp = w_data['current_weather']['temperature']
+        temp = round(w_data['current_weather']['temperature']) # 取整數比較好看
         w_code = w_data['current_weather']['weathercode']
         
         weather_emoji = "🌤️"
@@ -90,11 +90,11 @@ def get_exact_weather(lat, lon):
         elif w_code in [71, 73, 75]: weather_emoji = "❄️"
         elif w_code >= 95: weather_emoji = "⛈️"
         
-        return f"{weather_emoji} {temp}°C"
+        return f"{temp}°C {weather_emoji}"
     except Exception:
-        return "天氣未載入"
+        return "N/A"
 
-# 5. 核心 CSS 注入 (維持深色字體防反白)
+# 5. 核心 CSS 注入 (新增客製化橫向卡片樣式)
 custom_style = """
 <style>
     #MainMenu {visibility: hidden;}
@@ -123,12 +123,67 @@ custom_style = """
     .hero-title { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 8px !important; }
     .hero-subtitle { color: #90cdf4 !important; font-size: 1.05rem !important; font-weight: 500 !important; }
     
-    div[data-testid="metric-container"] {
-        background: white; border-radius: 10px; padding: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e2e8f0;
+    /* === 訂製橫向儀表板專用 CSS === */
+    .custom-dashboard {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap; /* 小螢幕自動折行 */
     }
-    div[data-testid="metric-container"] label { color: #4a5568 !important; font-weight: 600 !important;}
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #2d3748 !important; font-weight: bold !important; }
+    .dash-card {
+        flex: 1;
+        background: #f7f8f3; /* 截圖中的溫潤米色底 */
+        border-radius: 20px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        border: 1px solid rgba(0,0,0,0.03);
+        min-width: 210px;
+    }
+    .dash-icon-wrapper {
+        background: #e8ede3; /* 截圖中的柔和綠色圓角 */
+        color: #5a7d59;
+        min-width: 45px;
+        height: 45px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+    }
+    .dash-text {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+    .dash-label {
+        font-size: 0.8rem !important;
+        color: #a0a0a0 !important;
+        font-weight: 600;
+        margin-bottom: 2px;
+        letter-spacing: 1px;
+    }
+    .dash-value {
+        font-size: 1.3rem !important;
+        color: #7b6f66 !important; /* 截圖中的深咖/褐色字體 */
+        font-weight: 800;
+        line-height: 1.2;
+    }
+    .weather-badge {
+        background: #f1f3eb;
+        padding: 8px 14px;
+        border-radius: 14px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #5a7d59;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+    /* ========================= */
     
     div[data-testid="stExpander"] {
         background: rgba(255, 255, 255, 0.95) !important; border-radius: 12px !important;
@@ -152,7 +207,7 @@ if "cloud_data" not in st.session_state:
 if "local_backup" not in st.session_state:
     st.session_state.local_backup = {}
 
-# 城市座標資料庫 (不再依賴亂跑的 IP)
+# 城市座標資料庫
 city_db = {
     "🇹🇼 基隆市 (台灣)": (25.1276, 121.7392),
     "🇹🇼 台北市 (台灣)": (25.0330, 121.5654),
@@ -165,10 +220,7 @@ city_db = {
 # 6. 側邊欄助理
 with st.sidebar:
     st.markdown("### ⚙️ 系統設定")
-    
-    # 手動校正城市，完美避開 IP 與定位權限問題
     selected_city = st.selectbox("📍 選擇顯示天氣的城市：", list(city_db.keys()))
-    
     st.write("---")
     if st.button("🔄 同步最新雲端進度", use_container_width=True):
         st.session_state.cloud_data = load_cloud_data()
@@ -182,23 +234,42 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 8. 頂部儀表板：日期、精準天氣、倒數
+# 8. 頂部儀表板：自訂 HTML 橫向卡片
 today = datetime.now()
 target_date = datetime(2026, 7, 31)
 days_left = (target_date - today).days
 
-# 取得選定城市的精準天氣
 lat, lon = city_db[selected_city]
 weather_desc = get_exact_weather(lat, lon)
-display_city_name = selected_city.split(" ")[1] # 只取城市名稱，去掉國旗
+display_city_name = selected_city.split(" ")[1] # 取城市名稱
 
-# 使用 3 個 Column 排列儀表板
-col1, col2, col3 = st.columns(3)
-col1.metric("📅 今日日期", today.strftime("%Y-%m-%d"))
-col2.metric(f"📍 {display_city_name}", weather_desc)
-col3.metric("⏳ 距離澳洲出發", f"{max(0, days_left)} 天")
-
-st.markdown("<br>", unsafe_allow_html=True)
+# 注入自訂義的高質感橫向卡片 HTML
+dashboard_html = f"""
+<div class="custom-dashboard">
+    <div class="dash-card">
+        <div class="dash-icon-wrapper">📅</div>
+        <div class="dash-text">
+            <span class="dash-label">出發倒數</span>
+            <span class="dash-value">{max(0, days_left)} 天</span>
+        </div>
+    </div>
+    
+    <div class="dash-card" style="flex: 1.5;"> 
+        <div class="dash-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        </div>
+        <div class="dash-text">
+            <span class="dash-label">目前城市</span>
+            <span class="dash-value">{display_city_name}</span>
+        </div>
+        <div class="weather-badge">{weather_desc}</div>
+    </div>
+</div>
+"""
+st.markdown(dashboard_html, unsafe_allow_html=True)
 
 # 9. 核心頁籤
 tab1, tab2, tab3 = st.tabs(["📅 12天完整行程", "🏨 住宿與租車", "🎒 行李清單與安全"])
