@@ -135,10 +135,10 @@ custom_style = """
     }
     .dash-card {
         width: 100%;
-        max-width: 420px; 
+        max-width: 480px; /* 稍微放寬卡片，容納被放大的字體 */
         background: #f7f8f3; 
         border-radius: 20px;
-        padding: 16px 20px;
+        padding: 18px 24px;
         display: flex;
         align-items: center;
         gap: 15px;
@@ -148,37 +148,38 @@ custom_style = """
     .dash-icon-wrapper {
         background: #e8ede3; 
         color: #5a7d59;
-        min-width: 50px;
-        height: 50px;
-        border-radius: 14px;
+        min-width: 55px;
+        height: 55px;
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.6rem;
     }
     .dash-text {
         display: flex;
         flex-direction: column;
         flex-grow: 1;
+        justify-content: center;
     }
     .dash-label {
-        font-size: 0.75rem !important; 
-        color: #b0b0b0 !important;   
+        font-size: 0.9rem !important; 
+        color: #a0aec0 !important;   /* 🔥 改為質感淺灰色 🔥 */
         font-weight: 600;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         letter-spacing: 1px;
     }
     .dash-value {
-        font-size: 2.4rem !important; /* 🔥 城市字體極大化 🔥 */
+        font-size: 3.8rem !important; /* 🔥 城市字體極致放大3倍 🔥 */
         color: #332b22 !important;    
         font-weight: 900;
-        line-height: 1.1;
+        line-height: 1.0;
     }
     .weather-badge {
         background: #f1f3eb;
-        padding: 10px 20px;
+        padding: 12px 22px;
         border-radius: 16px;
-        font-size: 1.9rem !important; 
+        font-size: 2.1rem !important; 
         font-weight: 800;
         color: #5a7d59 !important;
         display: flex;
