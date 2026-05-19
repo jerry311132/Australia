@@ -118,7 +118,7 @@ custom_style = """
     div[data-testid="stAlert"] div, div[data-testid="stAlert"] span { color: #1a202c !important; }
     div[data-testid="stCheckbox"] span { color: #1a202c !important; }
     
-    /* 大標題卡片設計 (確保裡面的文字維持白色) */
+    /* 大標題卡片設計 */
     .hero-card {
         background: #1a365d; padding: 30px 20px; border-radius: 12px;
         text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 25px;
@@ -127,35 +127,34 @@ custom_style = """
     .hero-title { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 12px !important; }
     .hero-subtitle { color: #90cdf4 !important; font-size: 1.15rem !important; font-weight: 600 !important; letter-spacing: 0.5px; }
     
-    /* === 訂製橫向儀表板專用 CSS === */
+    /* === 訂製置中單一儀表板專用 CSS === */
     .custom-dashboard {
         display: flex;
-        gap: 15px;
+        justify-content: center;
         margin-bottom: 25px;
-        flex-wrap: wrap; 
     }
     .dash-card {
-        flex: 1;
+        width: 100%;
+        max-width: 420px; /* 限制寬度讓它置中好看 */
         background: #f7f8f3; 
         border-radius: 20px;
-        padding: 16px;
+        padding: 16px 20px;
         display: flex;
         align-items: center;
         gap: 15px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.04);
         border: 1px solid rgba(0,0,0,0.03);
-        min-width: 210px;
     }
     .dash-icon-wrapper {
         background: #e8ede3; 
         color: #5a7d59;
-        min-width: 45px;
-        height: 45px;
+        min-width: 50px;
+        height: 50px;
         border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.4rem;
+        font-size: 1.5rem;
     }
     .dash-text {
         display: flex;
@@ -163,29 +162,28 @@ custom_style = """
         flex-grow: 1;
     }
     .dash-label {
-        font-size: 0.8rem !important;
-        color: #a0a0a0 !important;
+        font-size: 0.75rem !important; /* 字體縮小 */
+        color: #b0b0b0 !important;   /* 顏色調淺 */
         font-weight: 600;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
         letter-spacing: 1px;
     }
     .dash-value {
-        font-size: 1.3rem !important;
-        color: #7b6f66 !important; 
-        font-weight: 800;
-        line-height: 1.2;
+        font-size: 1.6rem !important; /* 字體放大 */
+        color: #332b22 !important;    /* 顏色加深至黑褐色 */
+        font-weight: 900;
+        line-height: 1.1;
     }
-    /* 放大天氣字體與按鈕 */
     .weather-badge {
         background: #f1f3eb;
-        padding: 8px 18px;
-        border-radius: 14px;
-        font-size: 1.5rem !important; /* 溫度放大 */
+        padding: 10px 20px;
+        border-radius: 16px;
+        font-size: 1.9rem !important; /* 溫度大幅放大 */
         font-weight: 800;
         color: #5a7d59 !important;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         white-space: nowrap;
     }
     
@@ -234,7 +232,6 @@ today = datetime.now()
 target_date = datetime(2026, 7, 31)
 days_left = max(0, (target_date - today).days)
 
-# 轉換中文星期
 weekdays = ["一", "二", "三", "四", "五", "六", "日"]
 today_str = f"{today.month}月{today.day}日({weekdays[today.weekday()]})"
 
@@ -246,23 +243,16 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 9. 頂部儀表板：自訂 HTML 橫向卡片
+# 9. 頂部儀表板：自訂 HTML 單一橫向卡片
 lat, lon = city_db[selected_city]
 weather_desc = get_exact_weather(lat, lon)
 display_city_name = selected_city.split(" ")[1] 
 
-# 注意：這裡的 HTML 字串強制靠左對齊（不縮排），避免被 Streamlit 誤判為 Markdown 程式碼區塊
 dashboard_html = f"""
 <div class="custom-dashboard">
 <div class="dash-card">
-<div class="dash-text">
-<span class="dash-label">出發倒數</span>
-<span class="dash-value">{days_left} 天</span>
-</div>
-</div>
-<div class="dash-card" style="flex: 1.5;">
 <div class="dash-icon-wrapper">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
 </div>
 <div class="dash-text">
 <span class="dash-label">目前城市</span>
