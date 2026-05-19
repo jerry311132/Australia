@@ -3,7 +3,7 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 
-# 1. 網頁基本設定
+# 1. 網頁基本設定（完全停用舊版可能干擾的設定）
 st.set_page_config(
     page_title="2026 澳洲自駕隨身手冊", 
     page_icon="🦘", 
@@ -24,16 +24,13 @@ checklist_items = [
     "個人盥洗用品 (牙刷、牙膏，澳洲許多環保飯店不主動提供)"
 ]
 
-# 🟢 你的 Google 試算表連結
-GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1fQVv508Y4aQYYUJL5bOczni58UV7L8Tgs_nyljg6Nxo/edit?gid=0#gid=0"
-
 # 3. 雲端資料庫讀寫核心
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_cloud_data():
     try:
-        # 強制清除快取，確保拿到雲端最新資料
-        df = conn.read(spreadsheet=GOOGLE_SHEET_URL, ttl="0d")
+        # 透過 secrets 讀取已綁定的雲端試算表並強制刷新快取
+        df = conn.read(ttl="0d")
         cloud_dict = {}
         if df is not None and not df.empty:
             for _, row in df.iterrows():
@@ -58,17 +55,20 @@ def save_cloud_data(user_name, user_answers):
                 rows.append({"User": user, "Item": item, "Status": status})
         
         df_new = pd.DataFrame(rows)
-        conn.update(spreadsheet=GOOGLE_SHEET_URL, data=df_new)
+        conn.update(data=df_new)
         return True
     except:
         return False
 
-# 4. 核心 CSS 注入（精緻深藍字卡與舒適淺色毛玻璃介面）
+# 4. 核心 CSS 注入（精緻深藍字卡，徹底移除隱藏的多餘空白物件與滑動選單）
 custom_style = """
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    
+    /* 根除所有舊版自訂滑動選單的殘留樣式干擾 */
+    .nav, .slider, .swipe-menu { display: none !important; visibility: hidden !important; }
     
     .stApp {
         background: linear-gradient(rgba(245, 247, 250, 0.9), rgba(245, 247, 250, 0.9)), 
@@ -119,7 +119,7 @@ custom_style = """
 """
 st.markdown(custom_style, unsafe_allow_html=True)
 
-# 初始化雲端資料
+# 載入初始化雲端快取
 if "cloud_data" not in st.session_state:
     st.session_state.cloud_data = load_cloud_data()
 
@@ -133,13 +133,13 @@ with st.sidebar:
     
     if st.button("🔄 同步最新雲端進度", use_container_width=True):
         st.session_state.cloud_data = load_cloud_data()
-        st.toast("⚡ 已手動抓取最新雲端數據！")
+        st.toast("⚡ 已從雲端更新最新數據！")
 
 # 6. ▶️ 中央主畫面大標題
 st.markdown("""
 <div class="hero-card">
-    <div class="hero-title">AU 2026 澳洲自駕隨身手冊</div>
-    <div class="hero-subtitle">專案代號：Antigravity 精緻雲端記憶版</div>
+    <div class="hero-title">🇦🇺 2026 澳洲自駕隨身手冊</div>
+    <div class="hero-subtitle">專案代號：Antigravity 精緻雲端安全鎖定版</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -217,4 +217,4 @@ with tab3:
                 st.success(f"🎉 儲存成功！{user_name} 的行李資料已鎖定在 Google 雲端！")
                 st.balloons()
             else:
-                st.error("雲端儲存失敗，請確認試算表第一行是否有設定 User, Item, Status 三個欄位。")
+                st.error("雲端儲存失敗，請確認第一步的 secrets.toml 權限檔是否已成功上傳至 GitHub。")
