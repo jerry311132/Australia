@@ -135,7 +135,7 @@ custom_style = """
     }
     .dash-card {
         width: 100%;
-        max-width: 420px; /* 限制寬度讓它置中好看 */
+        max-width: 420px; 
         background: #f7f8f3; 
         border-radius: 20px;
         padding: 16px 20px;
@@ -162,15 +162,15 @@ custom_style = """
         flex-grow: 1;
     }
     .dash-label {
-        font-size: 0.75rem !important; /* 字體縮小 */
-        color: #b0b0b0 !important;   /* 顏色調淺 */
+        font-size: 0.75rem !important; 
+        color: #b0b0b0 !important;   
         font-weight: 600;
         margin-bottom: 4px;
         letter-spacing: 1px;
     }
     .dash-value {
-        font-size: 1.6rem !important; /* 字體放大 */
-        color: #332b22 !important;    /* 顏色加深至黑褐色 */
+        font-size: 2.4rem !important; /* 🔥 城市字體極大化 🔥 */
+        color: #332b22 !important;    
         font-weight: 900;
         line-height: 1.1;
     }
@@ -178,7 +178,7 @@ custom_style = """
         background: #f1f3eb;
         padding: 10px 20px;
         border-radius: 16px;
-        font-size: 1.9rem !important; /* 溫度大幅放大 */
+        font-size: 1.9rem !important; 
         font-weight: 800;
         color: #5a7d59 !important;
         display: flex;
