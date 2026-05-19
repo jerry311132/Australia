@@ -193,22 +193,23 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 9. 頂部儀表板：使用 div 強制突破 Streamlit 縮放限制
+# 9. 頂部儀表板：加入響應式(RWD)設計，手機電腦都能完美顯示
 lat, lon = city_db[selected_city]
 weather_desc = get_exact_weather(lat, lon)
 display_city_name = selected_city.split(" ")[1] 
 
+# 這裡我使用了 clamp() 自動縮放語法，並加入 flex-wrap: wrap 防爆框
 dashboard_html = f"""
 <div style="display: flex; justify-content: center; margin-bottom: 30px;">
-    <div style="width: 100%; max-width: 520px; background: #f7f8f3; border-radius: 20px; padding: 22px 26px; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.03);">
-        <div style="background: #e8ede3; color: #5a7d59; min-width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    <div style="width: 100%; max-width: 520px; background: #f7f8f3; border-radius: 20px; padding: 18px 20px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.03); flex-wrap: wrap;">
+        <div style="background: #e8ede3; color: #5a7d59; min-width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </div>
-        <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;">
-            <div style="font-size: 1.1rem; color: #a0aec0; font-weight: 700; letter-spacing: 1.5px; line-height: 1;">目前城市</div>
-            <div style="font-size: 3.6rem; color: #332b22; font-weight: 900; line-height: 1; margin-top: 6px; white-space: nowrap;">{display_city_name}</div>
+        <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center; min-width: 120px;">
+            <div style="font-size: 1rem; color: #a0aec0; font-weight: 700; letter-spacing: 1.5px; line-height: 1;">目前城市</div>
+            <div style="font-size: clamp(1.8rem, 7vw, 2.8rem); color: #332b22; font-weight: 900; line-height: 1; margin-top: 6px; white-space: nowrap;">{display_city_name}</div>
         </div>
-        <div style="background: #f1f3eb; padding: 14px 26px; border-radius: 16px; font-size: 2.2rem; font-weight: 800; color: #5a7d59; display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+        <div style="background: #f1f3eb; padding: 12px 18px; border-radius: 16px; font-size: clamp(1.4rem, 5vw, 2rem); font-weight: 800; color: #5a7d59; display: flex; align-items: center; gap: 8px; white-space: nowrap; margin-left: auto;">
             {weather_desc}
         </div>
     </div>
