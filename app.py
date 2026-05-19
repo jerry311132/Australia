@@ -73,13 +73,13 @@ def save_cloud_data(user_name, user_answers):
     except Exception as e:
         return False
 
-# 4. 精準天氣抓取核心 (匹配截圖樣式：溫度在前，Emoji 在後)
+# 4. 精準天氣抓取核心
 @st.cache_data(ttl=1800)
 def get_exact_weather(lat, lon):
     try:
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
         w_data = requests.get(weather_url, timeout=5).json()
-        temp = round(w_data['current_weather']['temperature']) # 取整數比較好看
+        temp = round(w_data['current_weather']['temperature']) 
         w_code = w_data['current_weather']['weathercode']
         
         weather_emoji = "🌤️"
@@ -94,7 +94,7 @@ def get_exact_weather(lat, lon):
     except Exception:
         return "N/A"
 
-# 5. 核心 CSS 注入 (新增客製化橫向卡片樣式)
+# 5. 核心 CSS 注入
 custom_style = """
 <style>
     #MainMenu {visibility: hidden;}
@@ -128,11 +128,11 @@ custom_style = """
         display: flex;
         gap: 15px;
         margin-bottom: 25px;
-        flex-wrap: wrap; /* 小螢幕自動折行 */
+        flex-wrap: wrap; 
     }
     .dash-card {
         flex: 1;
-        background: #f7f8f3; /* 截圖中的溫潤米色底 */
+        background: #f7f8f3; 
         border-radius: 20px;
         padding: 16px;
         display: flex;
@@ -143,7 +143,7 @@ custom_style = """
         min-width: 210px;
     }
     .dash-icon-wrapper {
-        background: #e8ede3; /* 截圖中的柔和綠色圓角 */
+        background: #e8ede3; 
         color: #5a7d59;
         min-width: 45px;
         height: 45px;
@@ -167,7 +167,7 @@ custom_style = """
     }
     .dash-value {
         font-size: 1.3rem !important;
-        color: #7b6f66 !important; /* 截圖中的深咖/褐色字體 */
+        color: #7b6f66 !important; 
         font-weight: 800;
         line-height: 1.2;
     }
@@ -183,7 +183,6 @@ custom_style = """
         gap: 6px;
         white-space: nowrap;
     }
-    /* ========================= */
     
     div[data-testid="stExpander"] {
         background: rgba(255, 255, 255, 0.95) !important; border-radius: 12px !important;
@@ -241,32 +240,27 @@ days_left = (target_date - today).days
 
 lat, lon = city_db[selected_city]
 weather_desc = get_exact_weather(lat, lon)
-display_city_name = selected_city.split(" ")[1] # 取城市名稱
+display_city_name = selected_city.split(" ")[1] 
 
-# 注入自訂義的高質感橫向卡片 HTML
+# 注意：這裡的 HTML 字串強制靠左對齊（不縮排），避免被 Streamlit 誤判為 Markdown 程式碼區塊
 dashboard_html = f"""
 <div class="custom-dashboard">
-    <div class="dash-card">
-        <div class="dash-icon-wrapper">📅</div>
-        <div class="dash-text">
-            <span class="dash-label">出發倒數</span>
-            <span class="dash-value">{max(0, days_left)} 天</span>
-        </div>
-    </div>
-    
-    <div class="dash-card" style="flex: 1.5;"> 
-        <div class="dash-icon-wrapper">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-        </div>
-        <div class="dash-text">
-            <span class="dash-label">目前城市</span>
-            <span class="dash-value">{display_city_name}</span>
-        </div>
-        <div class="weather-badge">{weather_desc}</div>
-    </div>
+<div class="dash-card">
+<div class="dash-text">
+<span class="dash-label">出發倒數</span>
+<span class="dash-value">{max(0, days_left)} 天</span>
+</div>
+</div>
+<div class="dash-card" style="flex: 1.5;">
+<div class="dash-icon-wrapper">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+</div>
+<div class="dash-text">
+<span class="dash-label">目前城市</span>
+<span class="dash-value">{display_city_name}</span>
+</div>
+<div class="weather-badge">{weather_desc}</div>
+</div>
 </div>
 """
 st.markdown(dashboard_html, unsafe_allow_html=True)
