@@ -8,7 +8,25 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. 核心 CSS 注入：保留美觀的背景與字體，移除會造成錯誤的按鈕樣式
+# 2. 初始化行李清單狀態 (確保切換頁籤時，勾選紀錄不會消失)
+checklist_items = [
+    "護照正本 (確認有效期限在 6 個月以上)",
+    "澳洲 ETA 電子簽證 (建議列印或手機截圖核準畫面)",
+    "台灣駕照正本 + 國際駕照 (自駕小隊駕駛人必備，缺一不可！)",
+    "海外高回饋信用卡 (建議帶2張以上備用) + 少量澳幣現金",
+    "澳洲規格八字三腳轉接頭 + 延長線 (飯店插座通常不夠用)",
+    "行動電源 (注意！必須放在隨身行李登機，不可托運)",
+    "保暖防風外套 / 輕量羽絨衣 (澳洲 8 月是冬季，早晚非常涼)",
+    "個人常備藥品 (感冒藥、腸胃藥、暈車藥，入境記得申報)",
+    "手機網卡 / eSIM (確認在出發前已完成開通設定)",
+    "個人盥洗用品 (牙刷、牙膏，澳洲許多環保飯店不主動提供)"
+]
+
+for item in checklist_items:
+    if f"check_{item}" not in st.session_state:
+        st.session_state[f"check_{item}"] = False
+
+# 3. 核心 CSS 注入
 custom_style = """
 <style>
     /* 隱藏預設元件 */
@@ -16,32 +34,32 @@ custom_style = """
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* 🌄 高級感全域背景圖：使用雪梨歌劇院輕微霧化背景 */
+    /* 🌄 全域背景圖 */
     .stApp {
         background: linear-gradient(rgba(245, 247, 250, 0.88), rgba(245, 247, 250, 0.88)), 
                     url('https://images.unsplash.com/photo-1524820197278-540916411e20?q=80&w=1080') no-repeat center center fixed;
         background-size: cover;
     }
     
-    /* 頂部高級深藍漸層卡片 */
+    /* 🎨 修正：頂部大標題改成淺色系毛玻璃感 */
     .hero-card {
-        background: linear-gradient(135deg, #112233 0%, #1a365d 100%);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(219, 234, 254, 0.85) 100%);
         padding: 25px 20px;
         border-radius: 16px;
-        color: white;
         text-align: center;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.04);
         margin-bottom: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.6);
     }
     
-    /* 📱 解決字體擁擠問題：大幅提升行距與段落高度 */
+    /* 📱 行距與字體優化 */
     p, li, span {
         line-height: 1.9 !important;
         font-size: 1.05rem !important;
         color: #2d3748;
     }
     
-    /* 讓展開摺疊面板 (Expander) 變成漂亮的現代毛玻璃字卡 */
+    /* 摺疊面板美化 */
     div[data-testid="stExpander"] {
         background: rgba(255, 255, 255, 0.75) !important;
         border-radius: 12px !important;
@@ -50,7 +68,7 @@ custom_style = """
         margin-bottom: 10px !important;
     }
     
-    /* 🎨 行程標題微調 */
+    /* 行程內標題 */
     .trip-day-header {
         font-size: 1.15rem !important;
         font-weight: 700 !important;
@@ -60,7 +78,7 @@ custom_style = """
         padding-left: 10px;
     }
     
-    /* 🔗 超連結美化：藍色清晰帶下劃線 */
+    /* 超連結清晰美化 */
     a {
         color: #2b6cb0 !important;
         text-decoration: underline !important;
@@ -70,7 +88,7 @@ custom_style = """
         color: #c53030 !important;
     }
     
-    /* 美化官方 Tabs 頁籤字體大小 */
+    /* 頁籤字體 */
     button[data-baseweb="tab"] {
         font-size: 1.1rem !important;
         font-weight: 600 !important;
@@ -79,7 +97,7 @@ custom_style = """
 """
 st.markdown(custom_style, unsafe_allow_html=True)
 
-# 3. ◀️ 側邊欄助理
+# 4. ◀️ 側邊欄助理
 with st.sidebar:
     st.markdown("### 🗺️ 澳洲旅程助手")
     target_date = datetime(2026, 7, 31)
@@ -91,18 +109,17 @@ with st.sidebar:
         st.markdown(f"<h1 style='color:#e53e3e; margin-top:0;'>{days_left} 天</h1>", unsafe_allow_html=True)
     else:
         st.success("🎉 澳洲之旅進行中！")
-        
     st.write("---")
     st.markdown("### 🕒 澳洲當地時間 (AEST)\n※ 墨爾本/雪梨/布里斯本比台灣快 2 小時！")
 
-# 4. ▶️ 中央主畫面大標題
+# 5. ▶️ 中央主畫面大標題 (已改成淺色底、深藍字)
 st.markdown("""
 <div class="hero-card">
-    <h1 style="margin:0; font-size:1.8rem; font-weight:700; color:white;">🇦🇺 2026 澳洲自駕隨身手冊</h1>
+    <h1 style="margin:0; font-size:1.8rem; font-weight:700; color:#1a365d !important;">🇦🇺 2026 澳洲自駕隨身手冊</h1>
 </div>
 """, unsafe_allow_html=True)
 
-# 5. ⭐️ 核心修正：使用官方原生 Tabs，保證手機可滑動且絕對不會壞！
+# 6. 核心頁籤元件
 tab1, tab2, tab3 = st.tabs(["📅 12天完整行程", "🏨 住宿與租車", "⚠️ 安全指南"])
 
 with tab1:
@@ -140,7 +157,7 @@ with tab1:
         st.markdown("""
         <div class="trip-day-header">🌊 大洋路開回機場還車 → ✈️ 飛往雪梨</div>
         • 🏠 **住宿**：<a href="https://maps.google.com/?q=ibis+Styles+Sydney+Central" target="_blank">雪梨中央宜必思酒店</a><br>
-        • 🚗 **租車**：🟢 機場還車
+        • 🚗 **租車**：🟢 官方機場還車
         """, unsafe_allow_html=True)
 
     with st.expander("📅 8/5 (三) Day 6：雪梨歌劇院與樂園"):
@@ -204,4 +221,29 @@ with tab2:
 
 with tab3:
     st.warning("🚗 **右駕核心口訣**：澳洲為右駕（靠左行駛），轉彎請默念「左小彎、右大彎」，進入圓環請絕對停車禮讓右側來車！")
-    st.info("🎒 **出國檢查清單**：台灣駕照正本 + 國際駕照、護照與澳洲 ETA 電子簽證、澳洲三腳規格轉接頭。")
+    
+    st.write("---")
+    # 🌟 新增：互動式行李檢查清單與進度條
+    st.subheader("🎒 澳洲自駕行李檢查清單")
+    st.write("請勾選已經確認放入隨身包或行李箱的物品：")
+    
+    # 計算勾選進度
+    completed_count = 0
+    for item in checklist_items:
+        # 使用綁定 session_state 的 checkbox，確保資料不因重新整理或切換頁籤遺失
+        is_checked = st.checkbox(item, key=f"check_{item}")
+        if is_checked:
+            completed_count += 1
+            
+    # 計算百分比並顯示進度條
+    total_count = len(checklist_items)
+    progress_percentage = completed_count / total_count
+    
+    st.write("")
+    st.progress(progress_percentage)
+    st.markdown(f"📊 **目前準備進度：{completed_count} / {total_count} ({int(progress_percentage * 100)}%)**")
+    
+    # 全部完成時發放小彩蛋
+    if completed_count == total_count:
+        st.balloons()
+        st.success("🎉 太棒了！所有必備行李與證件都準備齊全，隨時可以啟程飛往澳洲囉！")
