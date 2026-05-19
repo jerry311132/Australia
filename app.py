@@ -170,7 +170,7 @@ custom_style = """
         letter-spacing: 1px;
     }
     .dash-value {
-        font-size: 3.8rem !important; /* 🔥 城市字體極致放大3倍 🔥 */
+        font-size: 20.8rem !important; /* 🔥 城市字體極致放大20倍 🔥 */
         color: #332b22 !important;    
         font-weight: 900;
         line-height: 1.0;
