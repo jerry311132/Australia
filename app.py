@@ -73,28 +73,15 @@ def save_cloud_data(user_name, user_answers):
     except Exception as e:
         return False
 
-# 4. 全自動 IP 天氣核心 (無須點擊、不會被擋)
+# 4. 精準天氣抓取核心 (直接吃指定座標，100%不失準)
 @st.cache_data(ttl=1800)
-def get_auto_location_and_weather():
+def get_exact_weather(lat, lon):
     try:
-        # 直接用 IP 反查城市，避免 GPS 授權視窗與地圖伺服器擋刷
-        ip_resp = requests.get('http://ip-api.com/json/', timeout=5)
-        if ip_resp.status_code != 200:
-            return "無法連線", "天氣未載入"
-            
-        ip_info = ip_resp.json()
-        if ip_info['status'] != 'success':
-            return "未知城市", "天氣未載入"
-            
-        lat, lon, city = ip_info['lat'], ip_info['lon'], ip_info['city']
-        
-        # 抓取天氣資料
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
         w_data = requests.get(weather_url, timeout=5).json()
         temp = w_data['current_weather']['temperature']
         w_code = w_data['current_weather']['weathercode']
         
-        # 天氣代碼轉 Emoji
         weather_emoji = "🌤️"
         if w_code in [0, 1]: weather_emoji = "☀️"
         elif w_code in [2, 3]: weather_emoji = "☁️"
@@ -103,38 +90,31 @@ def get_auto_location_and_weather():
         elif w_code in [71, 73, 75]: weather_emoji = "❄️"
         elif w_code >= 95: weather_emoji = "⛈️"
         
-        return city, f"{weather_emoji} {temp}°C"
-    except Exception as e:
-        return "自動定位中...", "稍後重試"
+        return f"{weather_emoji} {temp}°C"
+    except Exception:
+        return "天氣未載入"
 
-# 5. 核心 CSS 注入 (已修復白字問題)
+# 5. 核心 CSS 注入 (維持深色字體防反白)
 custom_style = """
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* 隱藏預設 Markdown 元件中殘留的字眼 */
     div[data-testid="stMarkdownContainer"] p:contains("滑動切換選單"),
     div[data-testid="stMarkdownContainer"]:contains("滑動切換選單") {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important; margin: 0 !important; padding: 0 !important;
+        display: none !important; visibility: hidden !important; height: 0px !important; margin: 0 !important; padding: 0 !important;
     }
-    
     div.element-container:has(iframe), .stAlert + div { border: none !important; }
     
-    /* 背景設計 */
     .stApp {
         background: linear-gradient(rgba(245, 247, 250, 0.95), rgba(245, 247, 250, 0.95)), 
                     url('https://images.unsplash.com/photo-1524820197278-540916411e20?q=80&w=1080') no-repeat center center fixed;
         background-size: cover;
     }
     
-    /* 確保所有基礎文字是深色 (解決反白問題) */
     p, li, span { line-height: 1.9 !important; font-size: 1.05rem !important; color: #1a202c !important; }
     
-    /* 大標題卡片設計 (保留裡面的白字) */
     .hero-card {
         background: #1a365d; padding: 30px 20px; border-radius: 12px;
         text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 25px;
@@ -143,7 +123,6 @@ custom_style = """
     .hero-title { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 8px !important; }
     .hero-subtitle { color: #90cdf4 !important; font-size: 1.05rem !important; font-weight: 500 !important; }
     
-    /* 儀表板設計 */
     div[data-testid="metric-container"] {
         background: white; border-radius: 10px; padding: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e2e8f0;
@@ -151,7 +130,6 @@ custom_style = """
     div[data-testid="metric-container"] label { color: #4a5568 !important; font-weight: 600 !important;}
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #2d3748 !important; font-weight: bold !important; }
     
-    /* 行程展開區塊 (強迫裡面的字是深灰/藍色，確保肉眼清晰可見) */
     div[data-testid="stExpander"] {
         background: rgba(255, 255, 255, 0.95) !important; border-radius: 12px !important;
         border: 1px solid rgba(0, 0, 0, 0.1) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
@@ -160,7 +138,6 @@ custom_style = """
     div[data-testid="stExpander"] * { color: #1a202c !important; }
     div[data-testid="stExpander"] a { color: #2b6cb0 !important; text-decoration: underline !important; font-weight: 700 !important; }
     
-    /* 每日行程的標題列 */
     .trip-day-header {
         font-size: 1.15rem !important; font-weight: 700 !important; color: #1a365d !important;
         margin-bottom: 10px; border-left: 4px solid #3182ce; padding-left: 10px;
@@ -175,9 +152,24 @@ if "cloud_data" not in st.session_state:
 if "local_backup" not in st.session_state:
     st.session_state.local_backup = {}
 
+# 城市座標資料庫 (不再依賴亂跑的 IP)
+city_db = {
+    "🇹🇼 基隆市 (台灣)": (25.1276, 121.7392),
+    "🇹🇼 台北市 (台灣)": (25.0330, 121.5654),
+    "🇦🇺 墨爾本 (澳洲)": (-37.8136, 144.9631),
+    "🇦🇺 雪梨 (澳洲)": (-33.8688, 151.2093),
+    "🇦🇺 黃金海岸 (澳洲)": (-28.0167, 153.4000),
+    "🇦🇺 布里斯本 (澳洲)": (-27.4698, 153.0251)
+}
+
 # 6. 側邊欄助理
 with st.sidebar:
     st.markdown("### ⚙️ 系統設定")
+    
+    # 手動校正城市，完美避開 IP 與定位權限問題
+    selected_city = st.selectbox("📍 選擇顯示天氣的城市：", list(city_db.keys()))
+    
+    st.write("---")
     if st.button("🔄 同步最新雲端進度", use_container_width=True):
         st.session_state.cloud_data = load_cloud_data()
         st.toast("✅ 已成功從資料庫即時抓取最新進度！")
@@ -190,18 +182,20 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 8. 頂部儀表板：日期、全自動天氣、倒數
+# 8. 頂部儀表板：日期、精準天氣、倒數
 today = datetime.now()
 target_date = datetime(2026, 7, 31)
 days_left = (target_date - today).days
 
-# 直接獲取天氣，不須使用者點擊
-city, weather_desc = get_auto_location_and_weather()
+# 取得選定城市的精準天氣
+lat, lon = city_db[selected_city]
+weather_desc = get_exact_weather(lat, lon)
+display_city_name = selected_city.split(" ")[1] # 只取城市名稱，去掉國旗
 
 # 使用 3 個 Column 排列儀表板
 col1, col2, col3 = st.columns(3)
 col1.metric("📅 今日日期", today.strftime("%Y-%m-%d"))
-col2.metric(f"📍 {city}", weather_desc)
+col2.metric(f"📍 {display_city_name}", weather_desc)
 col3.metric("⏳ 距離澳洲出發", f"{max(0, days_left)} 天")
 
 st.markdown("<br>", unsafe_allow_html=True)
