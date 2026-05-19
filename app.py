@@ -94,7 +94,7 @@ def get_exact_weather(lat, lon):
     except Exception:
         return "N/A"
 
-# 5. 核心 CSS 注入 (徹底修復白字地獄！)
+# 5. 核心 CSS 注入
 custom_style = """
 <style>
     #MainMenu {visibility: hidden;}
@@ -115,16 +115,14 @@ custom_style = """
     }
     
     /* =========================================
-       超級保護網：因為背景是淺色，強迫所有文字變深色
+       超級保護網：強迫所有文字變深色，避免白字災難
        ========================================= */
     [data-testid="stAppViewContainer"] * {
         color: #1a202c; 
     }
-    /* 但藍色大卡片裡面的文字必須維持白色 */
     .hero-card, .hero-card * {
         color: #ffffff !important;
     }
-    /* 頁籤按鈕文字加深 */
     button[data-baseweb="tab"] * {
         color: #1a365d !important;
         font-weight: 700 !important;
@@ -139,7 +137,6 @@ custom_style = """
     .hero-title { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 12px !important; }
     .hero-subtitle { font-size: 1.15rem !important; font-weight: 600 !important; letter-spacing: 0.5px; }
     
-    /* 行程清單卡片 */
     div[data-testid="stExpander"] {
         background: rgba(255, 255, 255, 0.95) !important; border-radius: 12px !important;
         border: 1px solid rgba(0, 0, 0, 0.1) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
@@ -196,22 +193,22 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 9. 頂部儀表板：無敵內聯樣式 (強制放大 3倍、不被 CSS 覆蓋！)
+# 9. 頂部儀表板：使用 div 強制突破 Streamlit 縮放限制
 lat, lon = city_db[selected_city]
 weather_desc = get_exact_weather(lat, lon)
 display_city_name = selected_city.split(" ")[1] 
 
 dashboard_html = f"""
 <div style="display: flex; justify-content: center; margin-bottom: 30px;">
-    <div style="width: 100%; max-width: 520px; background: #f7f8f3; border-radius: 20px; padding: 20px 24px; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.03);">
-        <div style="background: #e8ede3; color: #5a7d59; min-width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    <div style="width: 100%; max-width: 520px; background: #f7f8f3; border-radius: 20px; padding: 22px 26px; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.03);">
+        <div style="background: #e8ede3; color: #5a7d59; min-width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </div>
         <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;">
-            <span style="font-size: 1.1rem !important; color: #a0aec0 !important; font-weight: 700; margin-bottom: 2px; letter-spacing: 1.5px; line-height: 1;">目前城市</span>
-            <span style="font-size: 4.5rem !important; color: #332b22 !important; font-weight: 900; line-height: 1.1; margin-top: 4px;">{display_city_name}</span>
+            <div style="font-size: 1.1rem; color: #a0aec0; font-weight: 700; letter-spacing: 1.5px; line-height: 1;">目前城市</div>
+            <div style="font-size: 3.6rem; color: #332b22; font-weight: 900; line-height: 1; margin-top: 6px; white-space: nowrap;">{display_city_name}</div>
         </div>
-        <div style="background: #f1f3eb; padding: 12px 24px; border-radius: 16px; font-size: 2.2rem !important; font-weight: 800; color: #5a7d59 !important; display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+        <div style="background: #f1f3eb; padding: 14px 26px; border-radius: 16px; font-size: 2.2rem; font-weight: 800; color: #5a7d59; display: flex; align-items: center; gap: 8px; white-space: nowrap;">
             {weather_desc}
         </div>
     </div>
