@@ -73,34 +73,70 @@ def save_cloud_data(user_name, user_answers):
     except Exception as e:
         return False
 
-@st.cache_data(ttl=1800)  # 快取 30 分鐘，避免頻繁呼叫 API
-def get_location_and_weather():
-    try:
-        # 1. 透過 IP 抓取經緯度與城市 (免費無須憑證)
-        ip_info = requests.get('http://ip-api.com/json/', timeout=5).json()
-        if ip_info['status'] != 'success':
-            return "位置未知", "N/A"
-        
-        lat, lon, city = ip_info['lat'], ip_info['lon'], ip_info['city']
-        
-        # 2. 透過 Open-Meteo 取得天氣 (免費無須憑證)
-        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-        w_data = requests.get(weather_url, timeout=5).json()
-        temp = w_data['current_weather']['temperature']
-        w_code = w_data['current_weather']['weathercode']
-        
-        # 簡單天氣代碼轉 Emoji
-        weather_emoji = "🌤️"
-        if w_code in [0, 1]: weather_emoji = "☀️"
-        elif w_code in [2, 3]: weather_emoji = "☁️"
-        elif w_code in [45, 48]: weather_emoji = "🌫️"
-        elif w_code in [51, 53, 55, 61, 63, 65]: weather_emoji = "🌧️"
-        elif w_code in [71, 73, 75]: weather_emoji = "❄️"
-        elif w_code >= 95: weather_emoji = "⛈️"
-        
-        return city, f"{weather_emoji} {temp}°C"
-    except:
-        return "無法定位", "無法取得天氣"
+const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('flight');
+  const [selectedDate, setSelectedDate] = useState<string>('1/26');
+  const [weather, setWeather] = useState<{ temp: number; code: number } | null>(null);
+  const [locationName, setLocationName] = useState<string>('定位中...');
+
+  const getWeatherIcon = (code: number) => {
+    if (code === 0) return '☀️';
+    if (code <= 3) return '🌤️';
+    if (code <= 48) return '🌫️';
+    if (code <= 67) return '🌧️';
+    if (code <= 77) return '❄️';
+    if (code <= 82) return '🌦️';
+    if (code <= 86) return '🌨️';
+    return '🌩️';
+  };
+
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      const fetchLocationAndWeather = async (lat: number, lon: number) => {
+        try {
+          const weatherPromise = fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`).then(res => res.json());
+          const geoPromise = fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh-TW`).then(res => res.json());
+
+          const [weatherData, geoData] = await Promise.all([weatherPromise, geoPromise]);
+          setWeather({
+            temp: Math.round(weatherData.current_weather.temperature),
+            code: weatherData.current_weather.weathercode
+          });
+          const city = geoData.address.city || geoData.address.town || geoData.address.suburb || geoData.address.district || geoData.address.state || '未知地點';
+          setLocationName(city);
+        } catch (error) {
+          setLocationName('載入失敗');
+        }
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => fetchLocationAndWeather(position.coords.latitude, position.coords.longitude),
+        () => setLocationName('定位權限關閉')
+      );
+    }
+  }, []);
+
+  const WeatherCard = () => (
+    <div className="mx-6 mb-4">
+      <div className="bg-soft-white rounded-2xl shadow-journal border-2 border-forest-green/10 p-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-forest-green/10 p-2 rounded-xl text-forest-green">
+            <Navigation size={22} className="fill-forest-green/20" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-earth-brown/50 uppercase tracking-widest leading-none mb-1">目前城市</p>
+            <p className="text-lg font-bold text-earth-brown">{locationName}</p>
+          </div>
+        </div>
+        {weather && (
+          <div className="flex items-center gap-2 bg-snow-beige/50 px-4 py-2 rounded-xl border border-forest-green/5">
+            <span className="text-xl font-bold text-forest-green">{weather.temp}°C</span>
+            <span className="text-2xl leading-none">{getWeatherIcon(weather.code)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
 # 4. 核心 CSS 注入
 custom_style = """
