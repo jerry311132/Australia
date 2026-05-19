@@ -2,12 +2,12 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import requests
-import os  # 新增 os 模組，用於檢查與讀寫本地備份檔案
+import os
 
 # 1. 網頁基本設定
 st.set_page_config(
-    page_title="2026 澳洲自駕隨身手冊",
-    page_icon="🦘",
+    page_title="2026 澳洲自駕隨身手冊", 
+    page_icon="🦘", 
     layout="centered"
 )
 
@@ -16,8 +16,7 @@ checklist_items = [
     "護照正本 (確認有效期限在 6 個月以上)",
     "澳洲 ETA 電子簽證 (建議列印或手機截圖核准畫面)",
     "台灣駕照正本 + 國際駕照 (自駕小隊駕駛人必備，缺一不可！)",
-    "信用卡",
-    "澳幣現金",
+    "海外高回饋信用卡 (建議帶2張以上備用) + 少量澳幣現金",
     "澳洲規格八字三腳轉接頭 + 延長線 (飯店插座通常不夠用)",
     "行動電源 (注意！必須放在隨身行李登機，不可托運)",
     "保暖防風外套 / 輕量羽絨衣 (澳洲 8 月是冬季，早晚非常涼)",
@@ -28,18 +27,16 @@ checklist_items = [
 
 # 你的 Google 試算表 CSV 導出與讀取連結
 CSV_URL = "https://docs.google.com/spreadsheets/d/1fQVv508Y4aQYYUJL5bOczni58UV7L8Tgs_nyljg6Nxo/export?format=csv&gid=0"
-LOCAL_BACKUP_FILE = "travel_backup.csv"  # 建立本地儲存檔案名稱
+LOCAL_BACKUP_FILE = "travel_backup.csv"
 
-# 3. 雲端/本地資料庫讀寫核心
+# 3. 雲端/本地資料庫與天氣 API 核心
 def load_cloud_data():
     try:
-        # 修正核心：優先讀取本地儲存的備份檔，達到真正的進度記憶
         if os.path.exists(LOCAL_BACKUP_FILE):
             df = pd.read_csv(LOCAL_BACKUP_FILE)
         else:
-            # 若無本地備份（第一次執行），才讀取 Google 雲端範本
             df = pd.read_csv(f"{CSV_URL}&nocache={datetime.now().timestamp()}")
-           
+            
         cloud_dict = {}
         if df is not None and not df.empty:
             for _, row in df.iterrows():
@@ -55,43 +52,63 @@ def load_cloud_data():
 
 def save_cloud_data(user_name, user_answers):
     try:
-        # 1. 先讀取目前所有人的完整資料
         current_cloud = load_cloud_data()
-       
-        # 防呆處理：確保該使用者存在於字典中
         if user_name not in current_cloud:
             current_cloud[user_name] = {}
-           
-        # 2. 用目前這位使用者最新勾選的進度覆蓋
+            
         current_cloud[user_name].update(user_answers)
-       
-        # 3. 整理成 DataFrame 表格格式
+        
         rows = []
         for user, items in current_cloud.items():
             for item, status in items.items():
                 rows.append({"User": user, "Item": item, "Status": str(status).upper()})
-       
+        
         df_new = pd.DataFrame(rows)
-       
-        # 4. 修正核心：將資料寫入本地 CSV 檔案，達到「真正儲存」的效果
         df_new.to_csv(LOCAL_BACKUP_FILE, index=False)
-       
-        # 5. 同步更新 Streamlit 畫面暫存，確保操作流暢
+        
         st.session_state.cloud_data = current_cloud
         st.session_state.local_backup[user_name] = user_answers
-       
+        
         return True
     except Exception as e:
         return False
 
-# 4. 核心 CSS 注入（強力抹除 Bug 選單，並維持美觀介面）
+@st.cache_data(ttl=1800)  # 快取 30 分鐘，避免頻繁呼叫 API
+def get_location_and_weather():
+    try:
+        # 1. 透過 IP 抓取經緯度與城市 (免費無須憑證)
+        ip_info = requests.get('http://ip-api.com/json/', timeout=5).json()
+        if ip_info['status'] != 'success':
+            return "位置未知", "N/A"
+        
+        lat, lon, city = ip_info['lat'], ip_info['lon'], ip_info['city']
+        
+        # 2. 透過 Open-Meteo 取得天氣 (免費無須憑證)
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+        w_data = requests.get(weather_url, timeout=5).json()
+        temp = w_data['current_weather']['temperature']
+        w_code = w_data['current_weather']['weathercode']
+        
+        # 簡單天氣代碼轉 Emoji
+        weather_emoji = "🌤️"
+        if w_code in [0, 1]: weather_emoji = "☀️"
+        elif w_code in [2, 3]: weather_emoji = "☁️"
+        elif w_code in [45, 48]: weather_emoji = "🌫️"
+        elif w_code in [51, 53, 55, 61, 63, 65]: weather_emoji = "🌧️"
+        elif w_code in [71, 73, 75]: weather_emoji = "❄️"
+        elif w_code >= 95: weather_emoji = "⛈️"
+        
+        return city, f"{weather_emoji} {temp}°C"
+    except:
+        return "無法定位", "無法取得天氣"
+
+# 4. 核心 CSS 注入
 custom_style = """
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-   
-    /* 終極大絕招：用絕對路徑與文字匹配，把畫面上任何包含「滑動切換選單」的區塊與空白圈圈徹底蒸發 */
+    
     div[data-testid="stMarkdownContainer"] p:contains("滑動切換選單"),
     div[data-testid="stMarkdownContainer"]:contains("滑動切換選單") {
         display: none !important;
@@ -100,75 +117,57 @@ custom_style = """
         margin: 0 !important;
         padding: 0 !important;
     }
-   
-    /* 針對那些空圈圈元件直接隱藏 */
-    div.element-container:has(iframe), .stAlert + div {
-        border: none !important;
-    }
-   
+    
+    div.element-container:has(iframe), .stAlert + div { border: none !important; }
+    
     .stApp {
-        background: linear-gradient(rgba(245, 247, 250, 0.9), rgba(245, 247, 250, 0.9)),
+        background: linear-gradient(rgba(245, 247, 250, 0.95), rgba(245, 247, 250, 0.95)), 
                     url('https://images.unsplash.com/photo-1524820197278-540916411e20?q=80&w=1080') no-repeat center center fixed;
         background-size: cover;
     }
-   
+    
     .hero-card {
-        background: #1a365d;
-        padding: 30px 20px;
-        border-radius: 12px;
-        text-align: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        margin-bottom: 25px;
+        background: #1a365d; padding: 30px 20px; border-radius: 12px;
+        text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 20px;
     }
-   
-    .hero-title {
-        color: #ffffff !important;
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-        margin-bottom: 8px !important;
+    .hero-title { color: #ffffff !important; font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 8px !important; }
+    .hero-subtitle { color: #90cdf4 !important; font-size: 1.05rem !important; font-weight: 500 !important; }
+    
+    /* 儀表板自訂樣式 */
+    div[data-testid="metric-container"] {
+        background: white; border-radius: 10px; padding: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;
+        border: 1px solid #e2e8f0;
     }
-   
-    .hero-subtitle {
-        color: #90cdf4 !important;
-        font-size: 1.05rem !important;
-        font-weight: 500 !important;
-    }
-   
+    
     p, li, span { line-height: 1.9 !important; font-size: 1.05rem !important; color: #2d3748; }
-   
+    
     div[data-testid="stExpander"] {
-        background: rgba(255, 255, 255, 0.8) !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(0, 0, 0, 0.05) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+        background: rgba(255, 255, 255, 0.9) !important; border-radius: 12px !important;
+        border: 1px solid rgba(0, 0, 0, 0.05) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
         margin-bottom: 12px !important;
     }
-   
+    
     .trip-day-header {
         font-size: 1.15rem !important; font-weight: 700 !important; color: #1a365d !important;
         margin-bottom: 10px; border-left: 4px solid #3182ce; padding-left: 10px;
     }
-   
+    
     a { color: #2b6cb0 !important; text-decoration: underline !important; font-weight: 700 !important; }
     button[data-baseweb="tab"] { font-size: 1.1rem !important; font-weight: 600 !important; }
 </style>
 """
 st.markdown(custom_style, unsafe_allow_html=True)
 
-# 初始化本地與雲端緩衝記憶體
+# 初始化緩衝記憶體
 if "cloud_data" not in st.session_state:
     st.session_state.cloud_data = load_cloud_data()
 if "local_backup" not in st.session_state:
     st.session_state.local_backup = {}
 
-# 5. 側邊欄助理
+# 5. 側邊欄助理 (僅保留雲端同步按鈕)
 with st.sidebar:
-    st.markdown("### 🦘 澳洲旅程助手")
-    target_date = datetime(2026, 7, 31)
-    today = datetime.now()
-    days_left = (target_date - today).days
-    st.markdown(f"⏳ **距離澳洲出發還有：**\n<h1 style='color:#e53e3e; margin-top:0;'>{max(0, days_left)} 天</h1>", unsafe_allow_html=True)
-   
+    st.markdown("### ⚙️ 系統設定")
     if st.button("🔄 同步最新雲端進度", use_container_width=True):
         st.session_state.cloud_data = load_cloud_data()
         st.toast("✅ 已成功從資料庫即時抓取最新進度！")
@@ -181,13 +180,28 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 7. 核心頁籤
+# 7. 頂部儀表板：日期、天氣、倒數
+today = datetime.now()
+target_date = datetime(2026, 7, 31)
+days_left = (target_date - today).days
+
+city, weather_desc = get_location_and_weather()
+
+# 使用 3 個 Column 排列儀表板
+col1, col2, col3 = st.columns(3)
+col1.metric("📅 今日日期", today.strftime("%Y-%m-%d"))
+col2.metric(f"📍 {city}", weather_desc)
+col3.metric("⏳ 距離澳洲出發", f"{max(0, days_left)} 天")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 8. 核心頁籤
 tab1, tab2, tab3 = st.tabs(["📅 12天完整行程", "🏨 住宿與租車", "🎒 行李清單與安全"])
 
 with tab1:
     st.markdown("### 📍 每日詳細行程安排")
     st.caption("💡 點擊下方行程卡片展開，藍色帶底線字體可一鍵開啟地圖導航")
-   
+    
     with st.expander("✈️ 7/31 (五) Day 1：抵達墨爾本"):
         st.markdown('<div class="trip-day-header">🛬 抵達墨爾本機場 → 市區 → 入住飯店</div>• 🏨 **住宿**：<a href="https://maps.google.com/?q=Holiday+Inn+Express+Melbourne+Little+Collins" target="_blank">墨爾本小柯林斯智選假日酒店</a><br>• 🚗 **租車**： 本日不租車', unsafe_allow_html=True)
     with st.expander("☕ 8/1 (六) Day 2：墨爾本市區觀光"):
@@ -221,34 +235,32 @@ with tab2:
 with tab3:
     st.warning("⚠️ **右駕核心口訣**：澳洲為右駕（靠左行駛），轉彎請默念「左小彎、右大彎」，進入圓環請絕對停車禮讓右側來車！")
     st.write("---")
-   
+    
     st.subheader("📋 澳洲自駕行李檢查清單")
-   
-    user_name = st.selectbox("👤 請選取你的名字：", ["政憲", "秀英", "芍慧 ", "Tiana", "小趙", "哲安", "鶴年", "喬喬", "蒨蒨"])
-   
-    # 優先讀取本地暫存，其次讀取資料庫
+    
+    user_name = st.selectbox("👤 請選取你的名字：", ["駕駛老王", "副駕阿美", "隊員小明", "隊員小華"])
+    
     user_records = st.session_state.local_backup.get(user_name, st.session_state.cloud_data.get(user_name, {}))
-   
+    
     st.write(f"請勾選 **{user_name}** 已放進行李的物品：")
-   
+    
     current_answers = {}
     completed_count = 0
-   
+    
     for item in checklist_items:
         default_checked = user_records.get(item, False)
         is_checked = st.checkbox(item, value=default_checked, key=f"cb_{user_name}_{item}")
         current_answers[item] = is_checked
         if is_checked:
             completed_count += 1
-           
+            
     total_count = len(checklist_items)
     progress_percentage = completed_count / total_count
-   
+    
     st.write("")
     st.progress(progress_percentage)
     st.markdown(f"🎯 **{user_name} 的準備進度：{completed_count} / {total_count} ({int(progress_percentage * 100)}%)**")
-   
-    # 真正的儲存按鈕
+    
     if st.button("💾 儲存今日進度", type="primary", use_container_width=True):
         with st.spinner("正在安全鎖定數據並同步..."):
             success = save_cloud_data(user_name, current_answers)
