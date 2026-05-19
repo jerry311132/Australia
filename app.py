@@ -223,7 +223,7 @@ with tab3:
    
     st.subheader("📋 澳洲自駕行李檢查清單")
    
-    user_name = st.selectbox("👤 請選取你的名字：", ["駕駛老王", "副駕阿美", "隊員小明", "隊員小華"])
+    user_name = st.selectbox("👤 請選取你的名字：", ["政憲", "秀英", "芍慧 ", "Tiana", "小趙", "哲安", "鶴年", "喬喬", "蒨蒨"])
    
     # 優先讀取本地暫存，其次讀取資料庫
     user_records = st.session_state.local_backup.get(user_name, st.session_state.cloud_data.get(user_name, {}))
