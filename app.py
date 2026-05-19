@@ -4,13 +4,6 @@ import pandas as pd
 import requests
 import os
 
-# 嘗試載入定位套件 (防呆機制)
-try:
-    from streamlit_geolocation import streamlit_geolocation
-    HAS_GEO = True
-except ImportError:
-    HAS_GEO = False
-
 # 1. 網頁基本設定
 st.set_page_config(
     page_title="2026 澳洲自駕隨身手冊", 
@@ -80,18 +73,22 @@ def save_cloud_data(user_name, user_answers):
     except Exception as e:
         return False
 
-# 4. 真實 GPS 天氣與定位核心 (使用 OpenStreetMap 與 Open-Meteo)
+# 4. 全自動 IP 天氣核心 (無須點擊、不會被擋)
 @st.cache_data(ttl=1800)
-def get_weather_by_coords(lat, lon):
+def get_auto_location_and_weather():
     try:
-        # 反查真實地理城市 (加上 User-Agent 避免被擋)
-        geo_url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&accept-language=zh-TW"
-        geo_data = requests.get(geo_url, headers={'User-Agent': 'TaiwanTravelApp/1.0'}, timeout=5).json()
-        address = geo_data.get('address', {})
-        # 依序尋找最合適的地名
-        city = address.get('city') or address.get('town') or address.get('suburb') or address.get('county') or "未知位置"
+        # 直接用 IP 反查城市，避免 GPS 授權視窗與地圖伺服器擋刷
+        ip_resp = requests.get('http://ip-api.com/json/', timeout=5)
+        if ip_resp.status_code != 200:
+            return "無法連線", "天氣未載入"
+            
+        ip_info = ip_resp.json()
+        if ip_info['status'] != 'success':
+            return "未知城市", "天氣未載入"
+            
+        lat, lon, city = ip_info['lat'], ip_info['lon'], ip_info['city']
         
-        # 抓取天氣
+        # 抓取天氣資料
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
         w_data = requests.get(weather_url, timeout=5).json()
         temp = w_data['current_weather']['temperature']
@@ -108,15 +105,16 @@ def get_weather_by_coords(lat, lon):
         
         return city, f"{weather_emoji} {temp}°C"
     except Exception as e:
-        return "定位成功", "天氣資料獲取失敗"
+        return "自動定位中...", "稍後重試"
 
-# 5. 核心 CSS 注入
+# 5. 核心 CSS 注入 (已修復白字問題)
 custom_style = """
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
+    /* 隱藏預設 Markdown 元件中殘留的字眼 */
     div[data-testid="stMarkdownContainer"] p:contains("滑動切換選單"),
     div[data-testid="stMarkdownContainer"]:contains("滑動切換選單") {
         display: none !important;
@@ -126,39 +124,47 @@ custom_style = """
     
     div.element-container:has(iframe), .stAlert + div { border: none !important; }
     
+    /* 背景設計 */
     .stApp {
         background: linear-gradient(rgba(245, 247, 250, 0.95), rgba(245, 247, 250, 0.95)), 
                     url('https://images.unsplash.com/photo-1524820197278-540916411e20?q=80&w=1080') no-repeat center center fixed;
         background-size: cover;
     }
     
+    /* 確保所有基礎文字是深色 (解決反白問題) */
+    p, li, span { line-height: 1.9 !important; font-size: 1.05rem !important; color: #1a202c !important; }
+    
+    /* 大標題卡片設計 (保留裡面的白字) */
     .hero-card {
         background: #1a365d; padding: 30px 20px; border-radius: 12px;
-        text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 10px;
+        text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 25px;
     }
-    .hero-title { color: #ffffff !important; font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 8px !important; }
+    .hero-card * { color: #ffffff !important; }
+    .hero-title { font-size: 1.6rem !important; font-weight: 700 !important; margin-bottom: 8px !important; }
     .hero-subtitle { color: #90cdf4 !important; font-size: 1.05rem !important; font-weight: 500 !important; }
     
+    /* 儀表板設計 */
     div[data-testid="metric-container"] {
         background: white; border-radius: 10px; padding: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e2e8f0;
     }
+    div[data-testid="metric-container"] label { color: #4a5568 !important; font-weight: 600 !important;}
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #2d3748 !important; font-weight: bold !important; }
     
-    p, li, span { line-height: 1.9 !important; font-size: 1.05rem !important; color: #2d3748; }
-    
+    /* 行程展開區塊 (強迫裡面的字是深灰/藍色，確保肉眼清晰可見) */
     div[data-testid="stExpander"] {
-        background: rgba(255, 255, 255, 0.9) !important; border-radius: 12px !important;
-        border: 1px solid rgba(0, 0, 0, 0.05) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+        background: rgba(255, 255, 255, 0.95) !important; border-radius: 12px !important;
+        border: 1px solid rgba(0, 0, 0, 0.1) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
         margin-bottom: 12px !important;
     }
+    div[data-testid="stExpander"] * { color: #1a202c !important; }
+    div[data-testid="stExpander"] a { color: #2b6cb0 !important; text-decoration: underline !important; font-weight: 700 !important; }
     
+    /* 每日行程的標題列 */
     .trip-day-header {
         font-size: 1.15rem !important; font-weight: 700 !important; color: #1a365d !important;
         margin-bottom: 10px; border-left: 4px solid #3182ce; padding-left: 10px;
     }
-    
-    a { color: #2b6cb0 !important; text-decoration: underline !important; font-weight: 700 !important; }
-    button[data-baseweb="tab"] { font-size: 1.1rem !important; font-weight: 600 !important; }
 </style>
 """
 st.markdown(custom_style, unsafe_allow_html=True)
@@ -184,28 +190,13 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 8. 頂部儀表板：日期、天氣、倒數
-if not HAS_GEO:
-    st.error("⚠️ 尚未安裝定位功能！請在終端機輸入 `pip install streamlit-geolocation` 後重整網頁。")
-    city, weather_desc = "尚未安裝", "N/A"
-else:
-    # 建立一個小區塊放定位按鈕
-    loc_col1, loc_col2 = st.columns([1, 4])
-    with loc_col1:
-        # 這個按鈕會觸發瀏覽器的定位授權彈跳視窗
-        location = streamlit_geolocation()
-    with loc_col2:
-        st.caption("👈 點擊左側雷達按鈕允許授權，以獲取精準當地天氣")
-
-    # 判斷是否成功取得 GPS 座標
-    if location and location.get('latitude') is not None and location.get('longitude') is not None:
-        city, weather_desc = get_weather_by_coords(location['latitude'], location['longitude'])
-    else:
-        city, weather_desc = "等待定位...", "請點擊按鈕授權"
-
+# 8. 頂部儀表板：日期、全自動天氣、倒數
 today = datetime.now()
 target_date = datetime(2026, 7, 31)
 days_left = (target_date - today).days
+
+# 直接獲取天氣，不須使用者點擊
+city, weather_desc = get_auto_location_and_weather()
 
 # 使用 3 個 Column 排列儀表板
 col1, col2, col3 = st.columns(3)
