@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+import json
 
 # 1. 網頁基本設定
 st.set_page_config(
@@ -82,56 +83,7 @@ custom_style = """
 """
 st.markdown(custom_style, unsafe_allow_html=True)
 
-# 4. JavaScript 瀏覽器本地記憶體（LocalStorage）橋接器
-# 這個隱藏的自訂組件可以讓 Streamlit 讀取和存入使用者手機的 LocalStorage，達成關閉網頁不遺失的功能
-def st_local_storage(key, value=None):
-    import json
-    # 建立一個唯一的金鑰名稱
-    js_key = f"au_trip_{key}"
-    
-    if f"ls_{js_key}" not in st.session_state:
-        st.session_state[f"ls_{js_key}"] = "{}"
-
-    # 如果有傳入新值，同步更新到 Session 與發送 JS 到前端存檔
-    if value is not None:
-        v_str = json.dumps(value)
-        st.session_state[f"ls_{js_key}"] = v_str
-        js_code = f"""
-        <script>
-            localStorage.setItem("{js_key}", '{v_str}');
-        </script>
-        """
-        st.components.v1.html(js_code, height=0, width=0)
-        return value
-
-    # 讀取邏輯：透過一個簡單的 HTML 密道把手機本地資料傳回 st.query_params
-    q_params = st.query_params
-    param_key = f"load_{js_key}"
-    
-    if param_key in q_params:
-        try:
-            return json.loads(q_params[param_key])
-        except:
-            return {}
-            
-    # 網頁剛載入時，呼叫前端去把手機資料捞出來放進網址裡讓 Python 讀取
-    fetch_js = f"""
-    <script>
-        const val = localStorage.getItem("{js_key}") || "{{}}";
-        const url = new URL(window.location.href);
-        if (url.searchParams.get("{param_key}") !== val) {{
-            url.searchParams.set("{param_key}", val);
-            window.location.href = url.href;
-        }}
-    </script>
-    """
-    st.components.v1.html(fetch_js, height=0, width=0)
-    try:
-        return json.loads(st.session_state[f"ls_{js_key}"])
-    except:
-        return {}
-
-# 5. ◀️ 側邊欄助理
+# 4. ◀️ 側邊欄助理
 with st.sidebar:
     st.markdown("### 🗺️ 澳洲旅程助手")
     target_date = datetime(2026, 7, 31)
@@ -146,14 +98,14 @@ with st.sidebar:
     st.write("---")
     st.markdown("### 🕒 澳洲當地時間 (AEST)\n※ 比台灣快 2 小時！")
 
-# 6. ▶️ 中央主畫面大標題
+# 5. ▶️ 中央主畫面大標題
 st.markdown("""
 <div class="hero-card">
     <h1 style="margin:0; font-size:1.8rem; font-weight:700; color:#1a365d !important;">🇦🇺 2026 澳洲自駕隨身手冊</h1>
 </div>
 """, unsafe_allow_html=True)
 
-# 7. 核心頁籤元件
+# 6. 核心頁籤元件
 tab1, tab2, tab3 = st.tabs(["📅 12天完整行程", "🏨 住宿與租車", "⚠️ 安全指南"])
 
 with tab1:
@@ -166,7 +118,7 @@ with tab1:
         • 🚗 **租車**：❌ 本日不租車
         """, unsafe_allow_html=True)
         
-    with st.expander("📅 8/1 (六) Day 2：墨爾本市觀光"):
+    with st.expander("📅 8/1 (六) Day 2：墨爾本市區觀光"):
         st.markdown("""
         <div class="trip-day-header">📷 墨爾本復古英倫風市區大遊覽</div>
         • 🗺️ **景點**：<a href="https://maps.google.com/?q=Flinders+Street+Station" target="_blank">弗林德斯街車站</a>、<a href="https://maps.google.com/?q=Hosier+Lane" target="_blank">塗鴉巷 Hosier Lane</a>
@@ -253,34 +205,60 @@ with tab3:
     
     st.subheader("🎒 澳洲自駕行李檢查清單")
     
-    # 🌟 重點：讓每個人選擇自己的名字，切換時會自動加載對應的 LocalStorage 數據
-    user_name = st.selectbox("👤 請選取你的名字（進度將自動綁定並儲存在你的手機裡）：", ["駕駛 A", "副駕駛 B", "隊員 C", "隊員 D"])
+    # 可自由修改這裡的名字清單，讓每個人都有專屬紀錄
+    user_name = st.selectbox("👤 請選取你的名字：", ["駕駛老王", "副駕阿美", "隊員小明", "隊員小華"])
     
-    # 從該使用者的手機儲存空間中讀取歷史紀錄
-    saved_data = st_local_storage(user_name)
+    # 建立唯一的 Key 用來鎖定手機瀏覽器的儲存區
+    storage_key = f"au_trip_v2_{user_name}"
     
-    st.write(f"請勾選 **{user_name}** 已經確認放入隨身包或行李箱的物品：")
-    
-    # 渲染複選框並記錄更改
-    new_data = {}
-    completed_count = 0
-    
-    for item in checklist_items:
-        # 預設值讀取歷史紀錄，如果沒有就設為 False
-        default_val = saved_data.get(item, False)
+    # 初始化控制狀態
+    if "checklist_state" not in st.session_state:
+        st.session_state.checklist_state = {}
         
-        # 為了防止切換使用者時元件打架，加上 user_name 作為 key 的一部分
-        is_checked = st.checkbox(item, value=default_val, key=f"item_{user_name}_{item}")
-        new_data[item] = is_checked
+    if "current_user" not in st.session_state or st.session_state.current_user != user_name:
+        st.session_state.current_user = user_name
+        # 當換人時，產生一段 JS 自動去抓這個人留在手機裡的歷史資料
+        fetch_js = f"""
+        <script>
+            const data = localStorage.getItem("{storage_key}") || "{{}}";
+            const current_input = document.getElementById("hidden_data_input");
+            // 透過一個隱藏的 HTML 元件把資料送回 Python，達成滑掉不遺失
+            const link = document.createElement('a');
+            link.href = "?user_data_" + "{user_name}=" + encodeURIComponent(data);
+            // 只有在網址上沒有這筆資料時才進行獲取，防止無限刷頁面
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has("user_data_" + "{user_name}")) {{
+                window.location.href = link.href;
+            }}
+        </script>
+        """
+        st.components.v1.html(fetch_js, height=0, width=0)
+
+    # 解析讀取到的歷史資料
+    saved_dict = {}
+    url_params = st.query_params
+    param_name = f"user_data_{user_name}"
+    if param_name in url_params:
+        try:
+            saved_dict = json.loads(url_params[param_name])
+            st.session_state.checklist_state = saved_dict
+        except:
+            pass
+
+    st.write(f"請勾選 **{user_name}** 已放進行李的物品：")
+    
+    # 渲染打勾方塊
+    current_answers = {}
+    completed_count = 0
+    for item in checklist_items:
+        # 優先從剛剛撈出來的歷史紀錄或當前記憶體讀取打勾狀態
+        default_checked = st.session_state.checklist_state.get(item, False)
+        is_checked = st.checkbox(item, value=default_checked, key=f"cb_{user_name}_{item}")
+        current_answers[item] = is_checked
         if is_checked:
             completed_count += 1
             
-    # 如果使用者動手勾選了，立刻觸發 JavaScript 將新狀態存入手機 LocalStorage 裡
-    if new_data != saved_data:
-        st_local_storage(user_name, new_data)
-        st.rerun() # 立即刷新，確保畫面進度條同步反應
-
-    # 計算百分比並顯示進度條
+    # 計算進度條百分比
     total_count = len(checklist_items)
     progress_percentage = completed_count / total_count
     
@@ -288,6 +266,21 @@ with tab3:
     st.progress(progress_percentage)
     st.markdown(f"📊 **{user_name} 的準備進度：{completed_count} / {total_count} ({int(progress_percentage * 100)}%)**")
     
+    # 🌟 新增：實體儲存按鈕
+    if st.button("💾 儲存今日進度", type="primary", use_container_width=True):
+        st.session_state.checklist_state = current_answers
+        json_str = json.dumps(current_answers)
+        
+        # 按下按鈕時，強力寫入手機 LocalStorage 固態儲存區，並清空網址干擾線，徹底解決滑掉遺失的問題
+        save_js = f"""
+        <script>
+            localStorage.setItem("{storage_key}", '{json_str}');
+            alert("✅ {user_name} 的行李進度已成功儲存在此手機！\\n即使關閉網頁、App滑掉也不會不見囉！");
+            window.location.href = window.location.pathname; // 清除網址雜訊回到主頁
+        </script>
+        """
+        st.components.v1.html(save_js, height=0, width=0)
+
     if completed_count == total_count:
         st.balloons()
-        st.success(f"🎉 太棒了！{user_name} 的行李全部準備齊全，可以出發囉！")
+        st.success(f"🎉 完美！{user_name} 的行李全部打包完畢！")
