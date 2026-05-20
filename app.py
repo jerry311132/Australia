@@ -107,16 +107,12 @@ custom_style = """
     }
     div.element-container:has(iframe), .stAlert + div { border: none !important; }
     
-    /* 背景設定 */
     .stApp {
         background: linear-gradient(rgba(245, 247, 250, 0.95), rgba(245, 247, 250, 0.95)), 
                     url('https://images.unsplash.com/photo-1524820197278-540916411e20?q=80&w=1080') no-repeat center center fixed;
         background-size: cover;
     }
     
-    /* =========================================
-       超級保護網：強迫所有文字變深色，避免白字災難
-       ========================================= */
     [data-testid="stAppViewContainer"] * {
         color: #1a202c; 
     }
@@ -128,7 +124,6 @@ custom_style = """
         font-weight: 700 !important;
         font-size: 1.05rem !important;
     }
-    /* ========================================= */
 
     .hero-card {
         background: #1a365d; padding: 30px 20px; border-radius: 12px;
@@ -158,10 +153,11 @@ if "cloud_data" not in st.session_state:
 if "local_backup" not in st.session_state:
     st.session_state.local_backup = {}
 
-# 城市座標資料庫
+# 城市座標資料庫 (新增新加坡)
 city_db = {
     "🇹🇼 基隆市 (台灣)": (25.1276, 121.7392),
     "🇹🇼 台北市 (台灣)": (25.0330, 121.5654),
+    "🇸🇬 新加坡 (星國)": (1.3521, 103.8198),
     "🇦🇺 墨爾本 (澳洲)": (-37.8136, 144.9631),
     "🇦🇺 雪梨 (澳洲)": (-33.8688, 151.2093),
     "🇦🇺 黃金海岸 (澳洲)": (-28.0167, 153.4000),
@@ -177,15 +173,15 @@ with st.sidebar:
         st.session_state.cloud_data = load_cloud_data()
         st.toast("✅ 已成功從資料庫即時抓取最新進度！")
 
-# 7. 日期與倒數計算
+# 7. 日期與倒數計算 (基準點更新為 7/30 台灣出發)
 today = datetime.now()
-target_date = datetime(2026, 7, 31)
+target_date = datetime(2026, 7, 30)
 days_left = max(0, (target_date - today).days)
 
 weekdays = ["一", "二", "三", "四", "五", "六", "日"]
 today_str = f"{today.month}月{today.day}日({weekdays[today.weekday()]})"
 
-# 8. 中央主畫面大標題 (整合日期與倒數)
+# 8. 中央主畫面大標題 (整合日期與更新後的倒數)
 st.markdown(f"""
 <div class="hero-card">
     <div class="hero-title">🐨 2026 澳洲自駕隨身手冊</div>
@@ -193,12 +189,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 9. 頂部儀表板：加入響應式(RWD)設計，手機電腦都能完美顯示
+# 9. 頂部儀表板：單一橫向卡片與響應式字體大小
 lat, lon = city_db[selected_city]
 weather_desc = get_exact_weather(lat, lon)
 display_city_name = selected_city.split(" ")[1] 
 
-# 這裡我使用了 clamp() 自動縮放語法，並加入 flex-wrap: wrap 防爆框
 dashboard_html = f"""
 <div style="display: flex; justify-content: center; margin-bottom: 30px;">
     <div style="width: 100%; max-width: 520px; background: #f7f8f3; border-radius: 20px; padding: 18px 20px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.03); flex-wrap: wrap;">
@@ -217,36 +212,38 @@ dashboard_html = f"""
 """
 st.markdown(dashboard_html, unsafe_allow_html=True)
 
-# 10. 核心頁籤
-tab1, tab2, tab3 = st.tabs(["📅 12天完整行程", "🏨 住宿與租車", "🎒 行李清單與安全"])
+# 10. 核心頁籤 (調整為含有新加坡行程的 13 天內容)
+tab1, tab2, tab3 = st.tabs(["📅 完整行程安排", "🏨 住宿與租車", "🎒 行李清單與安全"])
 
 with tab1:
     st.markdown("### 📍 每日詳細行程安排")
     st.caption("💡 點擊下方行程卡片展開，藍色帶底線字體可一鍵開啟地圖導航")
     
-    with st.expander("✈️ 7/31 (五) Day 1：抵達墨爾本"):
-        st.markdown('<div class="trip-day-header">🛬 抵達墨爾本機場 → 市區 → 入住飯店</div>• 🏨 **住宿**：<a href="https://maps.google.com/?q=Holiday+Inn+Express+Melbourne+Little+Collins" target="_blank">墨爾本小柯林斯智選假日酒店</a><br>• 🚗 **租車**： 本日不租車', unsafe_allow_html=True)
-    with st.expander("☕ 8/1 (六) Day 2：墨爾本市區觀光"):
+    with st.expander("✈️ 7/30 (四) Day 1：台灣 → 新加坡轉機快閃遊"):
+        st.markdown('<div class="trip-day-header">🛫 啟程出發 (01:35) → 🛬 抵達新加坡 (06:00)</div>• **今日行程**：樟宜機場出關 → 新加坡市區快閃一日壯遊（魚尾獅、濱海灣花園、大啖海南雞飯與肉骨茶） → 夜間回到機場準備轉機。', unsafe_allow_html=True)
+    with st.expander("✈️ 7/31 (五) Day 2：新加坡 → 抵達墨爾本"):
+        st.markdown('<div class="trip-day-header">🛫 新加坡起飛 (02:30) → 🛬 抵達墨爾本機場 (11:45)</div>• 🏨 **住宿**：<a href="https://maps.google.com/?q=Holiday+Inn+Express+Melbourne+Little+Collins" target="_blank">墨爾本小柯林斯智選假日酒店</a><br>• 🚗 **租車**： 本日不租車，搭乘接駁工具前往市區飯店入住休息、儲備體力。', unsafe_allow_html=True)
+    with st.expander("☕ 8/1 (六) Day 3：墨爾本市區觀光"):
         st.markdown('<div class="trip-day-header">🏙️ 墨爾本復古英倫風市區大遊覽</div>• 📸 **景點**：<a href="https://maps.google.com/?q=Flinders+Street+Station" target="_blank">弗林德斯街車站</a>、<a href="https://maps.google.com/?q=Hosier+Lane" target="_blank">塗鴉巷 Hosier Lane</a>', unsafe_allow_html=True)
-    with st.expander("🐧 8/2 (日) Day 3：彩虹小屋、蒸汽火車與企鵝歸巢"):
+    with st.expander("🐧 8/2 (日) Day 4：彩虹小屋、蒸汽火車與企鵝歸巢"):
         st.markdown('<div class="trip-day-header">🚂 啟動自駕 → 蒸汽火車 → 神仙企鵝</div>• 📸 **景點**：<a href="https://maps.google.com/?q=Brighton+Bathing+Boxes" target="_blank">布萊頓彩虹小屋</a>、<a href="https://maps.google.com/?q=Puffing+Billy+Railway" target="_blank">蒸汽火車</a>、<a href="https://maps.google.com/?q=Phillip+Island+Nature+Parks" target="_blank">企鵝歸巢</a><br>• 🚗 **租車**： 兩台自駕車今日取車出發！', unsafe_allow_html=True)
-    with st.expander("🌊 8/3 (一) Day 4：世界最美大洋路壯遊"):
+    with st.expander("🌊 8/3 (一) Day 5：世界最美大洋路壯遊"):
         st.markdown('<div class="trip-day-header">🛣️ Great Ocean Road 大洋路自駕 → 十二門徒石</div>• 🏨 **住宿**：<a href="https://maps.google.com/?q=Great+Ocean+Road+Tourist+Park" target="_blank">大洋路旅客公園飯店</a><br>• 🚗 **租車**： 雙車自駕進行中', unsafe_allow_html=True)
-    with st.expander("✈️ 8/4 (二) Day 5：飛往雪梨"):
+    with st.expander("✈️ 8/4 (二) Day 6：飛往雪梨"):
         st.markdown('<div class="trip-day-header">🚙 大洋路開回機場還車 → 🛫 飛往雪梨</div>• 🏨 **住宿**：<a href="https://maps.google.com/?q=ibis+Styles+Sydney+Central" target="_blank">雪梨中央宜秘思酒店</a>', unsafe_allow_html=True)
-    with st.expander("🎢 8/5 (三) Day 6：雪梨歌劇院與樂園"):
+    with st.expander("🎢 8/5 (三) Day 7：雪梨歌劇院與樂園"):
         st.markdown('<div class="trip-day-header">🎭 深度探索雪梨市區與港灣</div>• 📸 **景點**：<a href="https://maps.google.com/?q=Sydney+Opera+House" target="_blank">雪梨歌劇院</a>、<a href="https://maps.google.com/?q=Luna+Park+Sydney" target="_blank">月神樂園</a>', unsafe_allow_html=True)
-    with st.expander("⛰️ 8/6 (四) Day 7：藍山國家公園"):
+    with st.expander("⛰️ 8/6 (四) Day 8：藍山國家公園"):
         st.markdown('<div class="trip-day-header">🚠 走訪絕美藍山國家公園</div>• 🚌 **行程**：<a href="https://www.kkday.com" target="_blank">KKday 藍山專車一日遊</a>', unsafe_allow_html=True)
-    with st.expander("🐋 8/7 (五) Day 8：雪梨港賞鯨"):
+    with st.expander("🐋 8/7 (五) Day 9：雪梨港賞鯨"):
         st.markdown('<div class="trip-day-header">🚢 雪梨港出海賞鯨大體驗</div>• 🏨 **住宿**：<a href="https://maps.google.com/?q=ibis+Styles+Sydney+Central" target="_blank">雪梨中央宜秘思酒店</a>', unsafe_allow_html=True)
-    with st.expander("🏖️ 8/8 (六) Day 9：飛往黃金海岸"):
+    with st.expander("🏖️ 8/8 (六) Day 10：飛往黃金海岸"):
         st.markdown('<div class="trip-day-header">🏄 飛往渡假天堂黃金海岸</div>• 🏨 **住宿**：<a href="https://www.airbnb.com" target="_blank">黃金海岸 AirBnb</a>', unsafe_allow_html=True)
-    with st.expander("🍔 8/9 (日) Day 10：布里斯本市集"):
+    with st.expander("🍔 8/9 (日) Day 11：布里斯本市集"):
         st.markdown('<div class="trip-day-header">🚗 前往布里斯本 → 夜遊熱鬧市集</div>• 📸 **景點**：<a href="https://maps.google.com/?q=Eat+Street+Northshore" target="_blank">Eat Street 貨櫃市集</a>', unsafe_allow_html=True)
-    with st.expander("🐨 8/10 (一) Day 11：無尾熊與夜景"):
+    with st.expander("🐨 8/10 (一) Day 12：無尾熊與夜景"):
         st.markdown('<div class="trip-day-header">🌿 親手抱無尾熊！市郊自駕遊</div>• 📸 **景點**：<a href="https://maps.google.com/?q=Lone+Pine+Koala+Sanctuary" target="_blank">龍柏無尾熊保護區</a>、<a href="https://maps.google.com/?q=Mount+Coot-tha+Summit+Lookout" target="_blank">庫薩山夕陽夜景</a><br>• 🚗 **租車**： 布里斯本單日租車', unsafe_allow_html=True)
-    with st.expander("🛍️ 8/11 (二) Day 12：準備回台"):
+    with st.expander("🛍️ 8/11 (二) Day 13：準備回台"):
         st.markdown('<div class="trip-day-header">🎁 市區採購伴手禮 → 前往機場搭機</div>• 📸 **景點**：<a href="https://maps.google.com/?q=Brisbane+Airport" target="_blank">布里斯本國際機場</a>', unsafe_allow_html=True)
 
 with tab2:
@@ -260,7 +257,8 @@ with tab3:
     
     st.subheader("📋 澳洲自駕行李檢查清單")
     
-    user_name = st.selectbox("👤 請選取你的名字：", ["駕駛老王", "副駕阿美", "隊員小明", "隊員小華"])
+    # 這裡已完美換成你提供的全新隊員名單
+    user_name = st.selectbox("👤 請選取你的名字：", ["政憲", "秀英", "芍慧", "Tiana", "小趙", "哲安", "鶴年", "喬喬", "蒨蒨"])
     
     user_records = st.session_state.local_backup.get(user_name, st.session_state.cloud_data.get(user_name, {}))
     
